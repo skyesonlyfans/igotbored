@@ -343,14 +343,13 @@
         class Wall {
             constructor(x1, y1, x2, y2) {
                 this.x1 = x1; this.y1 = y1; this.x2 = x2; this.y2 = y2;
-                this.life = 1000; // Walls last a long time but could be breakable
             }
             draw() {
                 ctx.beginPath();
                 ctx.moveTo(this.x1, this.y1);
                 ctx.lineTo(this.x2, this.y2);
-                ctx.strokeStyle = theme === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.2)';
-                ctx.lineWidth = 3;
+                ctx.strokeStyle = theme === 'dark' ? 'rgba(0, 242, 255, 0.6)' : 'rgba(255, 59, 112, 0.4)';
+                ctx.lineWidth = 4;
                 ctx.lineCap = 'round';
                 ctx.stroke();
             }
@@ -358,7 +357,6 @@
 
         function resolveWallCollision(obj) {
             walls.forEach(w => {
-                // Basic line-circle collision / bounce
                 const dx = w.x2 - w.x1;
                 const dy = w.y2 - w.y1;
                 const l2 = dx * dx + dy * dy;
@@ -369,19 +367,18 @@
                 const projY = w.y1 + t * dy;
                 const dist = Math.hypot(obj.x - projX, obj.y - projY);
 
-                if (dist < obj.radius + 2) {
-                    // Collision normal
+                if (dist < obj.radius + 3) {
                     const nx = (obj.x - projX) / dist;
                     const ny = (obj.y - projY) / dist;
                     
-                    // Reflect velocity
                     const dot = obj.vx * nx + obj.vy * ny;
-                    obj.vx = (obj.vx - 2 * dot * nx) * 0.8;
-                    obj.vy = (obj.vy - 2 * dot * ny) * 0.8;
+                    if (dot < 0) { // Only reflect if moving towards wall
+                        obj.vx = (obj.vx - 2 * dot * nx) * 0.7;
+                        obj.vy = (obj.vy - 2 * dot * ny) * 0.7;
+                    }
 
-                    // Push out
-                    obj.x = projX + nx * (obj.radius + 3);
-                    obj.y = projY + ny * (obj.radius + 3);
+                    obj.x = projX + nx * (obj.radius + 4);
+                    obj.y = projY + ny * (obj.radius + 4);
                 }
             });
         }
@@ -394,10 +391,11 @@
             update() {
                 if (gravityEnabled) {
                     this.vy += 0.12;
-                    // Bass Bounce logic
-                    if (isMicActive && bass > 40) {
-                        this.vy -= (bass / 120) * Math.random() * 2;
-                        this.vx += (Math.random() - 0.5) * (bass / 50);
+                    // Fixed Bass Bounce logic: Use an impulse instead of constant push
+                    if (isMicActive && bass > 60) {
+                        const force = (bass - 60) / 100;
+                        this.vy -= force * Math.random() * 5;
+                        this.vx += (Math.random() - 0.5) * force * 10;
                     }
                 }
                 
@@ -408,12 +406,13 @@
                 }
 
                 this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.985; this.vy *= 0.985;
+                this.vx *= 0.98; this.vy *= 0.98;
 
                 resolveWallCollision(this);
 
                 if (this.x > width || this.x < 0) { this.vx *= -0.8; this.x = Math.max(0, Math.min(width, this.x)); }
-                if (this.y > height || this.y < 0) { this.vy *= -0.8; this.y = Math.max(0, Math.min(height, this.y)); }
+                if (this.y > height) { this.vy *= -0.6; this.y = height; }
+                if (this.y < 0) { this.vy *= -0.3; this.y = 0; } // Soft bounce off ceiling to prevent sticking
             }
             draw() {
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -440,11 +439,12 @@
                 if (this.health <= 0) return;
 
                 if (gravityEnabled) {
-                    this.vy += 0.05;
-                    // Bass interaction: Seekers jump on loud bass
-                    if (isMicActive && bass > 55) {
-                        this.vy -= (bass / 150) * 1.5;
-                        this.vx += (Math.random() - 0.5) * 2;
+                    this.vy += 0.08;
+                    // Visualizer Impulse: Kick seekers up on loud transients
+                    if (isMicActive && bass > 70) {
+                        const impulse = (bass - 70) / 40;
+                        this.vy -= impulse * 2;
+                        this.vx += (Math.random() - 0.5) * impulse * 4;
                     }
                 }
 
@@ -468,15 +468,17 @@
                 if (this.energy > 150) this.reproduce();
 
                 const speed = Math.hypot(this.vx, this.vy);
-                const currentMax = this.maxSpeed + (isMicActive ? volume / 20 : 0);
+                const currentMax = this.maxSpeed + (isMicActive ? volume / 15 : 0);
                 if (speed > currentMax) { this.vx = (this.vx / speed) * currentMax; this.vy = (this.vy / speed) * currentMax; }
                 
                 this.x += this.vx; this.y += this.vy;
+                this.vx *= 0.99; this.vy *= 0.99;
                 
                 resolveWallCollision(this);
 
                 if (this.x > width || this.x < 0) { this.vx *= -0.7; this.x = Math.max(0, Math.min(width, this.x)); }
-                if (this.y > height || this.y < 0) { this.vy *= -0.7; this.y = Math.max(0, Math.min(height, this.y)); }
+                if (this.y > height) { this.vy *= -0.5; this.y = height; }
+                if (this.y < 0) { this.vy *= -0.2; this.y = 0; }
             }
 
             reproduce() {
@@ -486,20 +488,20 @@
 
             draw() {
                 const lifeRatio = Math.max(0, this.health / this.maxHealth);
-                const audioPulse = isMicActive ? (volume / 80) : 0;
+                const audioPulse = isMicActive ? (volume / 60) : 0;
                 const basePulse = (Math.sin(tick * this.pulseSpeed) + 1) / 2;
-                const finalPulse = Math.max(basePulse * lifeRatio, audioPulse * 1.8);
+                const finalPulse = Math.max(basePulse * lifeRatio, audioPulse * 1.5);
                 
                 const hue = this.hOffset + (1 - lifeRatio) * 80; 
                 const sat = 60 + (lifeRatio * 40);
                 const light = 45 + (finalPulse * 45);
 
                 ctx.save();
-                ctx.shadowBlur = (15 + finalPulse * 25) * (theme === 'dark' ? 1 : 0.3);
+                ctx.shadowBlur = (15 + finalPulse * 30) * (theme === 'dark' ? 1 : 0.3);
                 ctx.shadowColor = `hsla(${hue}, ${sat}%, ${light}%, 0.8)`;
                 
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius + audioPulse * 12, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.radius + audioPulse * 15, 0, Math.PI * 2);
                 ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${0.2 + finalPulse * 0.8})`;
                 ctx.fill();
                 
@@ -517,10 +519,9 @@
             if (isMicActive && analyser) {
                 analyser.getByteFrequencyData(dataArray);
                 let sum = 0;
-                // Bass is usually the first few buckets
                 let bassSum = 0;
-                for(let i=0; i<10; i++) bassSum += dataArray[i];
-                bass = bassSum / 10;
+                for(let i=0; i<8; i++) bassSum += dataArray[i];
+                bass = bassSum / 8;
 
                 for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
                 volume = sum / dataArray.length;
@@ -537,9 +538,8 @@
                     seekers.push(new Seeker(mouse.x, mouse.y));
                     isDrawing = false;
                 } else if (currentTool === 'wall') {
-                    // Draw wall segments based on mouse movement
                     const dist = Math.hypot(mouse.x - mouse.lastX, mouse.y - mouse.lastY);
-                    if (dist > 15) {
+                    if (dist > 8) { // Smoother segmenting
                         walls.push(new Wall(mouse.lastX, mouse.lastY, mouse.x, mouse.y));
                         mouse.lastX = mouse.x;
                         mouse.lastY = mouse.y;
@@ -552,7 +552,7 @@
             particles = particles.filter(p => !p.isDead);
             particles.forEach(p => { p.update(); p.draw(); });
 
-            ctx.lineWidth = isMicActive ? 1 + (volume / 15) : 1;
+            ctx.lineWidth = isMicActive ? 1 + (volume / 12) : 1;
             for (let i = 0; i < seekers.length; i++) {
                 const s1 = seekers[i];
                 if (s1.health <= 0) continue;
@@ -561,7 +561,7 @@
                     const d = Math.hypot(s1.x - s2.x, s1.y - s2.y);
                     if (d < 160) {
                         const opacity = (1 - (d / 160)) * 0.3 * ((s1.health + s2.health) / (s1.maxHealth + s2.maxHealth));
-                        const glow = isMicActive ? (volume / 90) : 0;
+                        const glow = isMicActive ? (volume / 80) : 0;
                         ctx.beginPath();
                         ctx.strokeStyle = `hsla(${s1.hOffset}, 80%, 65%, ${opacity + glow})`;
                         ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
