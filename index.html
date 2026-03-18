@@ -13,7 +13,7 @@
             --bg-color: #0b0e14;
             --text-color: #f8f9fa;
             --accent-color: #00f2ff;
-            --ui-bg: rgba(20, 25, 35, 0.9);
+            --ui-bg: rgba(20, 25, 35, 0.95);
             --card-bg: #1e2530;
         }
 
@@ -21,7 +21,7 @@
             --bg-color: #f8f9fa;
             --text-color: #333;
             --accent-color: #ff85a1;
-            --ui-bg: rgba(255, 255, 255, 0.9);
+            --ui-bg: rgba(255, 255, 255, 0.95);
             --card-bg: #eee;
         }
 
@@ -62,16 +62,17 @@
 
         h1 {
             font-family: 'Gaegu', cursive;
-            font-size: 6rem;
+            font-size: clamp(3rem, 10vw, 6rem);
             color: var(--accent-color);
             margin-bottom: 0.5rem;
             letter-spacing: 4px;
+            text-align: center;
         }
 
         .play-btn {
             font-family: 'Gaegu', cursive;
-            font-size: 3rem;
-            padding: 0.8rem 4rem;
+            font-size: 2.5rem;
+            padding: 0.6rem 3.5rem;
             border: 3px solid var(--accent-color);
             color: var(--accent-color);
             background: transparent;
@@ -88,16 +89,16 @@
             box-shadow: 0 0 30px var(--accent-color);
         }
 
-        /* Sidebar UI - Outside of gameplay zone */
+        /* Sidebar UI */
         #ui-sidebar {
-            width: 200px;
+            width: 220px;
             height: 100%;
             background: var(--ui-bg);
             border-right: 1px solid rgba(255,255,255,0.1);
             display: flex;
             flex-direction: column;
-            padding: 1.5rem 1rem;
-            gap: 1rem;
+            padding: 1.2rem;
+            gap: 0.8rem;
             z-index: 40;
             backdrop-filter: blur(15px);
             transform: translateX(-100%);
@@ -111,12 +112,12 @@
 
         .tool-btn {
             font-family: 'Gaegu', cursive;
-            padding: 0.8rem;
+            padding: 0.7rem;
             border-radius: 12px;
-            border: none;
+            border: 1px solid transparent;
             background: var(--card-bg);
             cursor: pointer;
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             transition: all 0.2s;
             color: var(--text-color);
             text-align: left;
@@ -145,6 +146,7 @@
             flex-grow: 1;
             position: relative;
             background: #000;
+            cursor: crosshair;
         }
 
         canvas { 
@@ -155,11 +157,11 @@
 
         .instruction {
             position: absolute;
-            top: 2rem;
-            right: 2rem;
+            top: 1.5rem;
+            right: 1.5rem;
             text-align: right;
             color: #666;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             pointer-events: none;
             z-index: 10;
             text-transform: uppercase;
@@ -175,16 +177,11 @@
             border-radius: 50%;
             cursor: pointer;
             color: var(--text-color);
-            width: 50px;
-            height: 50px;
+            width: 48px;
+            height: 48px;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: transform 0.3s;
-        }
-        
-        #theme-toggle:hover {
-            transform: rotate(20deg);
         }
 
         .sidebar-label {
@@ -192,8 +189,7 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             color: #666;
-            margin-top: 1rem;
-            margin-bottom: -0.5rem;
+            margin-top: 0.5rem;
         }
     </style>
 </head>
@@ -206,20 +202,21 @@
     </div>
 
     <aside id="ui-sidebar">
-        <div class="sidebar-label">Tools</div>
+        <div class="sidebar-label">Creativity</div>
         <button class="tool-btn active" onclick="setTool('food', this)">spawn food</button>
         <button class="tool-btn" onclick="setTool('seeker', this)">spawn seeker</button>
+        <button class="tool-btn" onclick="setTool('wall', this)">draw walls</button>
         
-        <div class="sidebar-label">Forces</div>
+        <div class="sidebar-label">Physics Control</div>
         <button class="tool-btn" onclick="setTool('orbit', this)">gravity well</button>
         <button class="tool-btn" onclick="setTool('push', this)">repulse</button>
-        <button class="tool-btn" onclick="toggleGravity(this)">physics: on</button>
+        <button class="tool-btn active" id="gravity-btn" onclick="toggleGravity(this)">physics: on</button>
         
-        <div class="sidebar-label">Audio</div>
+        <div class="sidebar-label">Audio Engine</div>
         <button class="tool-btn" id="mic-btn" onclick="toggleMic()">listen: off</button>
         
         <div class="sidebar-label">System</div>
-        <button class="tool-btn" onclick="clearCanvas()" style="background: rgba(255, 59, 112, 0.2); color: #ff3b70; border: 1px solid #ff3b70;">reset colony</button>
+        <button class="tool-btn" onclick="clearCanvas()" style="background: rgba(255, 59, 112, 0.1); color: #ff3b70;">reset world</button>
         
         <button id="theme-toggle" onclick="toggleTheme()">
             <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
@@ -234,11 +231,11 @@
     <script>
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        let width, height, particles = [], seekers = [], isDrawing = false;
-        let currentTool = 'food', mouse = { x: 0, y: 0 }, gravityEnabled = true, theme = 'dark', tick = 0;
+        let width, height, particles = [], seekers = [], walls = [], isDrawing = false;
+        let currentTool = 'food', mouse = { x: 0, y: 0, lastX: 0, lastY: 0 }, gravityEnabled = true, theme = 'dark', tick = 0;
 
         // Audio variables
-        let audioCtx, analyser, dataArray, micStream, isMicActive = false, volume = 0;
+        let audioCtx, analyser, dataArray, micStream, isMicActive = false, volume = 0, bass = 0;
 
         const colors = {
             light: ['#ff85a1', '#72efdd', '#4ea8de', '#f48c06', '#9d4edd'],
@@ -249,13 +246,23 @@
             resize();
             window.addEventListener('resize', resize);
             
-            // Interaction listeners specifically on the canvas container
             const container = document.getElementById('canvas-container');
-            container.addEventListener('mousedown', (e) => { isDrawing = true; updateMouse(e); });
+            container.addEventListener('mousedown', (e) => { 
+                isDrawing = true; 
+                updateMouse(e);
+                mouse.lastX = mouse.x;
+                mouse.lastY = mouse.y;
+            });
             container.addEventListener('mousemove', (e) => { updateMouse(e); });
             window.addEventListener('mouseup', () => { isDrawing = false; });
             
-            container.addEventListener('touchstart', (e) => { isDrawing = true; updateMouse(e.touches[0]); e.preventDefault(); }, {passive: false});
+            container.addEventListener('touchstart', (e) => { 
+                isDrawing = true; 
+                updateMouse(e.touches[0]); 
+                mouse.lastX = mouse.x;
+                mouse.lastY = mouse.y;
+                e.preventDefault(); 
+            }, {passive: false});
             container.addEventListener('touchmove', (e) => { updateMouse(e.touches[0]); e.preventDefault(); }, {passive: false});
             container.addEventListener('touchend', () => { isDrawing = false; });
             
@@ -277,13 +284,12 @@
                     btn.innerText = "listen: on";
                     btn.classList.add('mic-active');
                 } catch (err) {
-                    console.error("Mic access denied", err);
                     btn.innerText = "mic error";
                 }
             } else {
                 if (micStream) micStream.getTracks().forEach(t => t.stop());
                 isMicActive = false;
-                volume = 0;
+                volume = 0; bass = 0;
                 btn.innerText = "listen: off";
                 btn.classList.remove('mic-active');
             }
@@ -299,7 +305,9 @@
         }
 
         function resize() { 
-            const rect = document.getElementById('canvas-container').getBoundingClientRect();
+            const container = document.getElementById('canvas-container');
+            if (!container) return;
+            const rect = container.getBoundingClientRect();
             width = canvas.width = rect.width; 
             height = canvas.height = rect.height; 
         }
@@ -314,6 +322,8 @@
             currentTool = tool; 
             document.querySelectorAll('#ui-sidebar .tool-btn').forEach(b => b.classList.remove('active')); 
             btn.classList.add('active'); 
+            // Keep gravity button highlighted if gravity is on, regardless of currentTool
+            document.getElementById('gravity-btn').classList.toggle('active', gravityEnabled);
         }
 
         function toggleGravity(btn) { 
@@ -322,12 +332,58 @@
             btn.classList.toggle('active', gravityEnabled); 
         }
 
-        function clearCanvas() { particles = []; seekers = []; }
+        function clearCanvas() { particles = []; seekers = []; walls = []; }
 
         function startGame() { 
             document.getElementById('menu-overlay').classList.add('hidden'); 
             document.getElementById('ui-sidebar').classList.add('visible');
-            resize(); // Final adjustment once sidebar slides in
+            setTimeout(resize, 100); 
+        }
+
+        class Wall {
+            constructor(x1, y1, x2, y2) {
+                this.x1 = x1; this.y1 = y1; this.x2 = x2; this.y2 = y2;
+                this.life = 1000; // Walls last a long time but could be breakable
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.moveTo(this.x1, this.y1);
+                ctx.lineTo(this.x2, this.y2);
+                ctx.strokeStyle = theme === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.2)';
+                ctx.lineWidth = 3;
+                ctx.lineCap = 'round';
+                ctx.stroke();
+            }
+        }
+
+        function resolveWallCollision(obj) {
+            walls.forEach(w => {
+                // Basic line-circle collision / bounce
+                const dx = w.x2 - w.x1;
+                const dy = w.y2 - w.y1;
+                const l2 = dx * dx + dy * dy;
+                if (l2 === 0) return;
+                let t = ((obj.x - w.x1) * dx + (obj.y - w.y1) * dy) / l2;
+                t = Math.max(0, Math.min(1, t));
+                const projX = w.x1 + t * dx;
+                const projY = w.y1 + t * dy;
+                const dist = Math.hypot(obj.x - projX, obj.y - projY);
+
+                if (dist < obj.radius + 2) {
+                    // Collision normal
+                    const nx = (obj.x - projX) / dist;
+                    const ny = (obj.y - projY) / dist;
+                    
+                    // Reflect velocity
+                    const dot = obj.vx * nx + obj.vy * ny;
+                    obj.vx = (obj.vx - 2 * dot * nx) * 0.8;
+                    obj.vy = (obj.vy - 2 * dot * ny) * 0.8;
+
+                    // Push out
+                    obj.x = projX + nx * (obj.radius + 3);
+                    obj.y = projY + ny * (obj.radius + 3);
+                }
+            });
         }
 
         class Particle {
@@ -336,16 +392,28 @@
                 this.radius = Math.random() * 2 + 1.5; this.color = color; this.isDead = false;
             }
             update() {
-                if (gravityEnabled) this.vy += 0.1;
+                if (gravityEnabled) {
+                    this.vy += 0.12;
+                    // Bass Bounce logic
+                    if (isMicActive && bass > 40) {
+                        this.vy -= (bass / 120) * Math.random() * 2;
+                        this.vx += (Math.random() - 0.5) * (bass / 50);
+                    }
+                }
+                
                 if (isDrawing) {
                     const dx = mouse.x - this.x, dy = mouse.y - this.y, d = Math.sqrt(dx*dx + dy*dy);
                     if (currentTool === 'orbit' && d < 300) { this.vx += dy * ((300 - d) / 4000); this.vy -= dx * ((300 - d) / 4000); }
-                    else if (currentTool === 'push' && d < 200) { this.vx -= (dx / d) * 0.4; this.vy -= (dy / d) * 0.4; }
+                    else if (currentTool === 'push' && d < 200) { this.vx -= (dx / d) * 0.6; this.vy -= (dy / d) * 0.6; }
                 }
+
                 this.x += this.vx; this.y += this.vy;
-                this.vx *= 0.99; this.vy *= 0.99;
-                if (this.x > width || this.x < 0) this.vx *= -0.8;
-                if (this.y > height || this.y < 0) this.vy *= -0.8;
+                this.vx *= 0.985; this.vy *= 0.985;
+
+                resolveWallCollision(this);
+
+                if (this.x > width || this.x < 0) { this.vx *= -0.8; this.x = Math.max(0, Math.min(width, this.x)); }
+                if (this.y > height || this.y < 0) { this.vy *= -0.8; this.y = Math.max(0, Math.min(height, this.y)); }
             }
             draw() {
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -357,21 +425,30 @@
             constructor(x, y, hOffset = Math.random() * 360) {
                 this.x = x; this.y = y;
                 this.vx = (Math.random() - 0.5) * 3; this.vy = (Math.random() - 0.5) * 3;
-                this.radius = 4;
-                this.maxSpeed = 2 + Math.random() * 2;
+                this.radius = 4.5;
+                this.maxSpeed = 2.5 + Math.random() * 2;
                 this.health = 100;
-                this.maxHealth = 100 + Math.random() * 100; 
+                this.maxHealth = 100 + Math.random() * 150; 
                 this.hOffset = hOffset; 
                 this.energy = 0;
                 this.pulseSpeed = 0.03 + Math.random() * 0.04;
-                this.decayRate = 0.03 + Math.random() * 0.05;
+                this.decayRate = 0.025 + Math.random() * 0.04;
             }
 
             update() {
                 this.health -= this.decayRate;
                 if (this.health <= 0) return;
 
-                let closest = null, minDist = 500;
+                if (gravityEnabled) {
+                    this.vy += 0.05;
+                    // Bass interaction: Seekers jump on loud bass
+                    if (isMicActive && bass > 55) {
+                        this.vy -= (bass / 150) * 1.5;
+                        this.vx += (Math.random() - 0.5) * 2;
+                    }
+                }
+
+                let closest = null, minDist = 400;
                 particles.forEach(p => {
                     const d = Math.hypot(p.x - this.x, p.y - this.y);
                     if (d < minDist) { minDist = d; closest = p; }
@@ -379,51 +456,56 @@
 
                 if (closest) {
                     const dx = closest.x - this.x, dy = closest.y - this.y;
-                    this.vx += (dx / minDist) * 0.3; this.vy += (dy / minDist) * 0.3;
+                    this.vx += (dx / minDist) * 0.4; this.vy += (dy / minDist) * 0.4;
                     if (minDist < this.radius + closest.radius + 3) {
                         closest.isDead = true;
-                        this.health = Math.min(this.maxHealth, this.health + 20);
-                        this.energy += 25;
-                        this.radius = Math.min(12, this.radius + 0.4);
+                        this.health = Math.min(this.maxHealth, this.health + 25);
+                        this.energy += 30;
+                        this.radius = Math.min(14, this.radius + 0.5);
                     }
                 }
 
-                if (this.energy > 120) this.reproduce();
+                if (this.energy > 150) this.reproduce();
 
                 const speed = Math.hypot(this.vx, this.vy);
-                if (speed > this.maxSpeed) { this.vx = (this.vx / speed) * this.maxSpeed; this.vy = (this.vy / speed) * this.maxSpeed; }
+                const currentMax = this.maxSpeed + (isMicActive ? volume / 20 : 0);
+                if (speed > currentMax) { this.vx = (this.vx / speed) * currentMax; this.vy = (this.vy / speed) * currentMax; }
                 
                 this.x += this.vx; this.y += this.vy;
-                if (this.x > width || this.x < 0) this.vx *= -0.7;
-                if (this.y > height || this.y < 0) this.vy *= -0.7;
+                
+                resolveWallCollision(this);
+
+                if (this.x > width || this.x < 0) { this.vx *= -0.7; this.x = Math.max(0, Math.min(width, this.x)); }
+                if (this.y > height || this.y < 0) { this.vy *= -0.7; this.y = Math.max(0, Math.min(height, this.y)); }
             }
 
             reproduce() {
                 this.energy = 0; this.radius *= 0.6;
-                seekers.push(new Seeker(this.x + 10, this.y + 10, this.hOffset + (Math.random() - 0.5) * 30));
+                seekers.push(new Seeker(this.x + (Math.random()-0.5)*20, this.y + (Math.random()-0.5)*20, this.hOffset + (Math.random() - 0.5) * 40));
             }
 
             draw() {
-                const lifeRatio = this.health / this.maxHealth;
-                const audioPulse = isMicActive ? (volume / 100) : 0;
+                const lifeRatio = Math.max(0, this.health / this.maxHealth);
+                const audioPulse = isMicActive ? (volume / 80) : 0;
                 const basePulse = (Math.sin(tick * this.pulseSpeed) + 1) / 2;
-                const finalPulse = Math.max(basePulse * lifeRatio, audioPulse * 1.5);
+                const finalPulse = Math.max(basePulse * lifeRatio, audioPulse * 1.8);
                 
-                const hue = this.hOffset + (1 - lifeRatio) * 60; 
-                const sat = 70 + (lifeRatio * 30);
-                const light = 40 + (finalPulse * 40);
+                const hue = this.hOffset + (1 - lifeRatio) * 80; 
+                const sat = 60 + (lifeRatio * 40);
+                const light = 45 + (finalPulse * 45);
 
                 ctx.save();
-                ctx.shadowBlur = (10 + finalPulse * 20) * (theme === 'dark' ? 1 : 0.2);
+                ctx.shadowBlur = (15 + finalPulse * 25) * (theme === 'dark' ? 1 : 0.3);
                 ctx.shadowColor = `hsla(${hue}, ${sat}%, ${light}%, 0.8)`;
                 
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius + audioPulse * 10, 0, Math.PI * 2);
-                ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${0.3 + finalPulse * 0.7})`;
+                ctx.arc(this.x, this.y, this.radius + audioPulse * 12, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${0.2 + finalPulse * 0.8})`;
                 ctx.fill();
                 
+                // Nucleus
                 ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius * 0.3, 0, Math.PI * 2);
+                ctx.arc(this.x, this.y, this.radius * 0.35, 0, Math.PI * 2);
                 ctx.fillStyle = theme === 'dark' ? '#fff' : '#000';
                 ctx.fill();
                 ctx.restore();
@@ -435,6 +517,11 @@
             if (isMicActive && analyser) {
                 analyser.getByteFrequencyData(dataArray);
                 let sum = 0;
+                // Bass is usually the first few buckets
+                let bassSum = 0;
+                for(let i=0; i<10; i++) bassSum += dataArray[i];
+                bass = bassSum / 10;
+
                 for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
                 volume = sum / dataArray.length;
             }
@@ -443,30 +530,40 @@
             ctx.fillRect(0, 0, width, height);
 
             if (isDrawing) {
-                if (currentTool === 'food' && particles.length < 1500) {
+                if (currentTool === 'food' && particles.length < 2000) {
                     const pool = colors[theme];
-                    for(let i=0; i<2; i++) particles.push(new Particle(mouse.x + (Math.random()-0.5)*15, mouse.y + (Math.random()-0.5)*15, pool[Math.floor(Math.random()*pool.length)]));
-                } else if (currentTool === 'seeker' && seekers.length < 80) {
+                    for(let i=0; i<3; i++) particles.push(new Particle(mouse.x + (Math.random()-0.5)*20, mouse.y + (Math.random()-0.5)*20, pool[Math.floor(Math.random()*pool.length)]));
+                } else if (currentTool === 'seeker' && seekers.length < 100) {
                     seekers.push(new Seeker(mouse.x, mouse.y));
                     isDrawing = false;
+                } else if (currentTool === 'wall') {
+                    // Draw wall segments based on mouse movement
+                    const dist = Math.hypot(mouse.x - mouse.lastX, mouse.y - mouse.lastY);
+                    if (dist > 15) {
+                        walls.push(new Wall(mouse.lastX, mouse.lastY, mouse.x, mouse.y));
+                        mouse.lastX = mouse.x;
+                        mouse.lastY = mouse.y;
+                    }
                 }
             }
+
+            walls.forEach(w => w.draw());
 
             particles = particles.filter(p => !p.isDead);
             particles.forEach(p => { p.update(); p.draw(); });
 
-            ctx.lineWidth = isMicActive ? 1 + (volume / 20) : 1;
+            ctx.lineWidth = isMicActive ? 1 + (volume / 15) : 1;
             for (let i = 0; i < seekers.length; i++) {
                 const s1 = seekers[i];
                 if (s1.health <= 0) continue;
                 for (let j = i + 1; j < seekers.length; j++) {
                     const s2 = seekers[j];
                     const d = Math.hypot(s1.x - s2.x, s1.y - s2.y);
-                    if (d < 180) {
-                        const opacity = (1 - (d / 180)) * 0.3 * ((s1.health + s2.health) / (s1.maxHealth + s2.maxHealth));
-                        const glow = isMicActive ? (volume / 100) : 0;
+                    if (d < 160) {
+                        const opacity = (1 - (d / 160)) * 0.3 * ((s1.health + s2.health) / (s1.maxHealth + s2.maxHealth));
+                        const glow = isMicActive ? (volume / 90) : 0;
                         ctx.beginPath();
-                        ctx.strokeStyle = `hsla(${s1.hOffset}, 80%, 60%, ${opacity + glow})`;
+                        ctx.strokeStyle = `hsla(${s1.hOffset}, 80%, 65%, ${opacity + glow})`;
                         ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
                         ctx.stroke();
                     }
@@ -476,8 +573,8 @@
             seekers = seekers.filter(s => s.health > 0);
             seekers.forEach(s => { s.update(); s.draw(); });
 
-            if (isDrawing) {
-                ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 45, 0, Math.PI * 2);
+            if (isDrawing && currentTool !== 'wall') {
+                ctx.beginPath(); ctx.arc(mouse.x, mouse.y, currentTool === 'orbit' ? 300 : currentTool === 'push' ? 200 : 45, 0, Math.PI * 2);
                 ctx.strokeStyle = theme === 'dark' ? 'rgba(0, 242, 255, 0.2)' : 'rgba(0,0,0,0.1)';
                 ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
             }
