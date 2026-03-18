@@ -390,12 +390,23 @@
             }
             update() {
                 if (gravityEnabled) {
-                    this.vy += 0.12;
-                    // Fixed Bass Bounce logic: Use an impulse instead of constant push
-                    if (isMicActive && bass > 60) {
-                        const force = (bass - 60) / 100;
-                        this.vy -= force * Math.random() * 5;
-                        this.vx += (Math.random() - 0.5) * force * 10;
+                    // Normal gravity
+                    let gravity = 0.12;
+                    
+                    // Increase gravity as object gets higher to cap movement at 3/4 screen
+                    if (this.y < height * 0.25) {
+                        gravity += (0.25 - this.y/height) * 0.8;
+                    }
+                    
+                    this.vy += gravity;
+
+                    // Desensitized Bass Bounce
+                    if (isMicActive && bass > 120) {
+                        // Higher threshold (120 vs 60), lower force (250 divider)
+                        const force = (bass - 120) / 250;
+                        // Cap vertical velocity to avoid shooting up
+                        this.vy -= Math.min(force * 8, 3.5);
+                        this.vx += (Math.random() - 0.5) * force * 5;
                     }
                 }
                 
@@ -412,7 +423,7 @@
 
                 if (this.x > width || this.x < 0) { this.vx *= -0.8; this.x = Math.max(0, Math.min(width, this.x)); }
                 if (this.y > height) { this.vy *= -0.6; this.y = height; }
-                if (this.y < 0) { this.vy *= -0.3; this.y = 0; } // Soft bounce off ceiling to prevent sticking
+                if (this.y < 0) { this.vy = Math.abs(this.vy) * 0.3; this.y = 0; }
             }
             draw() {
                 ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
@@ -439,12 +450,18 @@
                 if (this.health <= 0) return;
 
                 if (gravityEnabled) {
-                    this.vy += 0.08;
-                    // Visualizer Impulse: Kick seekers up on loud transients
-                    if (isMicActive && bass > 70) {
-                        const impulse = (bass - 70) / 40;
-                        this.vy -= impulse * 2;
-                        this.vx += (Math.random() - 0.5) * impulse * 4;
+                    let gravity = 0.08;
+                    // Cap at 3/4 height
+                    if (this.y < height * 0.25) {
+                        gravity += (0.25 - this.y/height) * 0.6;
+                    }
+                    this.vy += gravity;
+
+                    // Desensitized impulse for Seekers
+                    if (isMicActive && bass > 130) {
+                        const impulse = (bass - 130) / 100;
+                        this.vy -= Math.min(impulse * 1.5, 2.5);
+                        this.vx += (Math.random() - 0.5) * impulse * 2;
                     }
                 }
 
@@ -468,7 +485,7 @@
                 if (this.energy > 150) this.reproduce();
 
                 const speed = Math.hypot(this.vx, this.vy);
-                const currentMax = this.maxSpeed + (isMicActive ? volume / 15 : 0);
+                const currentMax = this.maxSpeed + (isMicActive ? volume / 30 : 0);
                 if (speed > currentMax) { this.vx = (this.vx / speed) * currentMax; this.vy = (this.vy / speed) * currentMax; }
                 
                 this.x += this.vx; this.y += this.vy;
@@ -478,7 +495,7 @@
 
                 if (this.x > width || this.x < 0) { this.vx *= -0.7; this.x = Math.max(0, Math.min(width, this.x)); }
                 if (this.y > height) { this.vy *= -0.5; this.y = height; }
-                if (this.y < 0) { this.vy *= -0.2; this.y = 0; }
+                if (this.y < 0) { this.vy = Math.abs(this.vy) * 0.2; this.y = 0; }
             }
 
             reproduce() {
@@ -488,7 +505,7 @@
 
             draw() {
                 const lifeRatio = Math.max(0, this.health / this.maxHealth);
-                const audioPulse = isMicActive ? (volume / 60) : 0;
+                const audioPulse = isMicActive ? (volume / 120) : 0;
                 const basePulse = (Math.sin(tick * this.pulseSpeed) + 1) / 2;
                 const finalPulse = Math.max(basePulse * lifeRatio, audioPulse * 1.5);
                 
@@ -552,7 +569,7 @@
             particles = particles.filter(p => !p.isDead);
             particles.forEach(p => { p.update(); p.draw(); });
 
-            ctx.lineWidth = isMicActive ? 1 + (volume / 12) : 1;
+            ctx.lineWidth = isMicActive ? 1 + (volume / 25) : 1;
             for (let i = 0; i < seekers.length; i++) {
                 const s1 = seekers[i];
                 if (s1.health <= 0) continue;
@@ -561,7 +578,7 @@
                     const d = Math.hypot(s1.x - s2.x, s1.y - s2.y);
                     if (d < 160) {
                         const opacity = (1 - (d / 160)) * 0.3 * ((s1.health + s2.health) / (s1.maxHealth + s2.maxHealth));
-                        const glow = isMicActive ? (volume / 80) : 0;
+                        const glow = isMicActive ? (volume / 120) : 0;
                         ctx.beginPath();
                         ctx.strokeStyle = `hsla(${s1.hOffset}, 80%, 65%, ${opacity + glow})`;
                         ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
