@@ -400,13 +400,20 @@
                     
                     this.vy += gravity;
 
-                    // Desensitized Bass Bounce
-                    if (isMicActive && bass > 120) {
-                        // Higher threshold (120 vs 60), lower force (250 divider)
-                        const force = (bass - 120) / 250;
-                        // Cap vertical velocity to avoid shooting up
-                        this.vy -= Math.min(force * 8, 3.5);
-                        this.vx += (Math.random() - 0.5) * force * 5;
+                    // Desensitized Multi-Directional Bounce
+                    if (isMicActive && bass > 125) {
+                        const force = (bass - 125) / 250;
+                        const rand = Math.random();
+                        
+                        // Vertical movement (mostly up, but some down)
+                        if (rand < 0.7) {
+                            this.vy -= Math.min(force * 7, 3.5);
+                        } else if (rand < 0.85) {
+                            this.vy += force * 4;
+                        }
+                        
+                        // Horizontal scatter
+                        this.vx += (Math.random() - 0.5) * force * 12;
                     }
                 }
                 
@@ -457,11 +464,19 @@
                     }
                     this.vy += gravity;
 
-                    // Desensitized impulse for Seekers
-                    if (isMicActive && bass > 130) {
-                        const impulse = (bass - 130) / 100;
-                        this.vy -= Math.min(impulse * 1.5, 2.5);
-                        this.vx += (Math.random() - 0.5) * impulse * 2;
+                    // Desensitized Multi-Directional impulse for Seekers
+                    if (isMicActive && bass > 135) {
+                        const impulse = (bass - 135) / 100;
+                        const rand = Math.random();
+                        
+                        // Jittery random direction bursts
+                        if (rand < 0.6) {
+                            this.vy -= Math.min(impulse * 1.5, 2.5);
+                        } else if (rand < 0.75) {
+                            this.vy += impulse * 2;
+                        }
+                        
+                        this.vx += (Math.random() - 0.5) * impulse * 6;
                     }
                 }
 
