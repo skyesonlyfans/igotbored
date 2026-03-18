@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I GOT BORED... by Skye</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Quicksand:wght@300;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --text-color: #f8f9fa;
+            --accent-color: #00f2ff;
+            --ui-bg: rgba(20, 25, 35, 0.9);
+            --card-bg: #1e2530;
+        }
+
+        [data-theme='light'] {
+            --bg-color: #f8f9fa;
+            --text-color: #333;
+            --accent-color: #ff85a1;
+            --ui-bg: rgba(255, 255, 255, 0.9);
+            --card-bg: #eee;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Quicksand', sans-serif;
+            user-select: none;
+            transition: background-color 0.8s ease;
+            display: flex;
+        }
+
+        #menu-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-color);
+            z-index: 100;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+
+        #menu-overlay.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        h1 {
+            font-family: 'Gaegu', cursive;
+            font-size: 6rem;
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+            letter-spacing: 4px;
+        }
+
+        .play-btn {
+            font-family: 'Gaegu', cursive;
+            font-size: 3rem;
+            padding: 0.8rem 4rem;
+            border: 3px solid var(--accent-color);
+            color: var(--accent-color);
+            background: transparent;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 2rem;
+        }
+
+        .play-btn:hover {
+            background: var(--accent-color);
+            color: #000;
+            transform: scale(1.05);
+            box-shadow: 0 0 30px var(--accent-color);
+        }
+
+        /* Sidebar UI - Outside of gameplay zone */
+        #ui-sidebar {
+            width: 200px;
+            height: 100%;
+            background: var(--ui-bg);
+            border-right: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            flex-direction: column;
+            padding: 1.5rem 1rem;
+            gap: 1rem;
+            z-index: 40;
+            backdrop-filter: blur(15px);
+            transform: translateX(-100%);
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+        }
+
+        #ui-sidebar.visible {
+            transform: translateX(0);
+        }
+
+        .tool-btn {
+            font-family: 'Gaegu', cursive;
+            padding: 0.8rem;
+            border-radius: 12px;
+            border: none;
+            background: var(--card-bg);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: all 0.2s;
+            color: var(--text-color);
+            text-align: left;
+            width: 100%;
+        }
+
+        .tool-btn.active {
+            background: var(--accent-color);
+            color: #000;
+            box-shadow: 0 4px 12px rgba(0, 242, 255, 0.3);
+        }
+
+        .tool-btn.mic-active {
+            animation: pulse-red 1.5s infinite;
+            background: #ff3b70;
+            color: white;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(255, 59, 112, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(255, 59, 112, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(255, 59, 112, 0); }
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            background: #000;
+        }
+
+        canvas { 
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .instruction {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            text-align: right;
+            color: #666;
+            font-size: 0.8rem;
+            pointer-events: none;
+            z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #theme-toggle {
+            margin-top: auto;
+            align-self: center;
+            background: var(--card-bg);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 0.8rem;
+            border-radius: 50%;
+            cursor: pointer;
+            color: var(--text-color);
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s;
+        }
+        
+        #theme-toggle:hover {
+            transform: rotate(20deg);
+        }
+
+        .sidebar-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #666;
+            margin-top: 1rem;
+            margin-bottom: -0.5rem;
+        }
+    </style>
+</head>
+<body data-theme="dark">
+
+    <div id="menu-overlay">
+        <h1>I GOT BORED...</h1>
+        <p style="color: #666; font-weight: 300; letter-spacing: 2px;">reactive genetic networks by Skye</p>
+        <button class="play-btn" onclick="startGame()">play</button>
+    </div>
+
+    <aside id="ui-sidebar">
+        <div class="sidebar-label">Tools</div>
+        <button class="tool-btn active" onclick="setTool('food', this)">spawn food</button>
+        <button class="tool-btn" onclick="setTool('seeker', this)">spawn seeker</button>
+        
+        <div class="sidebar-label">Forces</div>
+        <button class="tool-btn" onclick="setTool('orbit', this)">gravity well</button>
+        <button class="tool-btn" onclick="setTool('push', this)">repulse</button>
+        <button class="tool-btn" onclick="toggleGravity(this)">physics: on</button>
+        
+        <div class="sidebar-label">Audio</div>
+        <button class="tool-btn" id="mic-btn" onclick="toggleMic()">listen: off</button>
+        
+        <div class="sidebar-label">System</div>
+        <button class="tool-btn" onclick="clearCanvas()" style="background: rgba(255, 59, 112, 0.2); color: #ff3b70; border: 1px solid #ff3b70;">reset colony</button>
+        
+        <button id="theme-toggle" onclick="toggleTheme()">
+            <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+        </button>
+    </aside>
+
+    <main id="canvas-container">
+        <div class="instruction">Sound reactive colony</div>
+        <canvas id="canvas"></canvas>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [], seekers = [], isDrawing = false;
+        let currentTool = 'food', mouse = { x: 0, y: 0 }, gravityEnabled = true, theme = 'dark', tick = 0;
+
+        // Audio variables
+        let audioCtx, analyser, dataArray, micStream, isMicActive = false, volume = 0;
+
+        const colors = {
+            light: ['#ff85a1', '#72efdd', '#4ea8de', '#f48c06', '#9d4edd'],
+            dark: ['#00f2ff', '#7000ff', '#ff007b', '#00ff41', '#ffff00', '#ffae00']
+        };
+
+        function init() {
+            resize();
+            window.addEventListener('resize', resize);
+            
+            // Interaction listeners specifically on the canvas container
+            const container = document.getElementById('canvas-container');
+            container.addEventListener('mousedown', (e) => { isDrawing = true; updateMouse(e); });
+            container.addEventListener('mousemove', (e) => { updateMouse(e); });
+            window.addEventListener('mouseup', () => { isDrawing = false; });
+            
+            container.addEventListener('touchstart', (e) => { isDrawing = true; updateMouse(e.touches[0]); e.preventDefault(); }, {passive: false});
+            container.addEventListener('touchmove', (e) => { updateMouse(e.touches[0]); e.preventDefault(); }, {passive: false});
+            container.addEventListener('touchend', () => { isDrawing = false; });
+            
+            requestAnimationFrame(loop);
+        }
+
+        async function toggleMic() {
+            const btn = document.getElementById('mic-btn');
+            if (!isMicActive) {
+                try {
+                    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    const source = audioCtx.createMediaStreamSource(micStream);
+                    analyser = audioCtx.createAnalyser();
+                    analyser.fftSize = 256;
+                    source.connect(analyser);
+                    dataArray = new Uint8Array(analyser.frequencyBinCount);
+                    isMicActive = true;
+                    btn.innerText = "listen: on";
+                    btn.classList.add('mic-active');
+                } catch (err) {
+                    console.error("Mic access denied", err);
+                    btn.innerText = "mic error";
+                }
+            } else {
+                if (micStream) micStream.getTracks().forEach(t => t.stop());
+                isMicActive = false;
+                volume = 0;
+                btn.innerText = "listen: off";
+                btn.classList.remove('mic-active');
+            }
+        }
+
+        function toggleTheme() {
+            theme = theme === 'light' ? 'dark' : 'light';
+            document.body.setAttribute('data-theme', theme);
+            const icon = document.getElementById('theme-toggle');
+            icon.innerHTML = theme === 'dark' ? 
+                `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>` : 
+                `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
+        }
+
+        function resize() { 
+            const rect = document.getElementById('canvas-container').getBoundingClientRect();
+            width = canvas.width = rect.width; 
+            height = canvas.height = rect.height; 
+        }
+
+        function updateMouse(e) { 
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left; 
+            mouse.y = e.clientY - rect.top; 
+        }
+
+        function setTool(tool, btn) { 
+            currentTool = tool; 
+            document.querySelectorAll('#ui-sidebar .tool-btn').forEach(b => b.classList.remove('active')); 
+            btn.classList.add('active'); 
+        }
+
+        function toggleGravity(btn) { 
+            gravityEnabled = !gravityEnabled; 
+            btn.innerText = `physics: ${gravityEnabled ? 'on' : 'off'}`; 
+            btn.classList.toggle('active', gravityEnabled); 
+        }
+
+        function clearCanvas() { particles = []; seekers = []; }
+
+        function startGame() { 
+            document.getElementById('menu-overlay').classList.add('hidden'); 
+            document.getElementById('ui-sidebar').classList.add('visible');
+            resize(); // Final adjustment once sidebar slides in
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y; this.vx = (Math.random() - 0.5) * 4; this.vy = (Math.random() - 0.5) * 4;
+                this.radius = Math.random() * 2 + 1.5; this.color = color; this.isDead = false;
+            }
+            update() {
+                if (gravityEnabled) this.vy += 0.1;
+                if (isDrawing) {
+                    const dx = mouse.x - this.x, dy = mouse.y - this.y, d = Math.sqrt(dx*dx + dy*dy);
+                    if (currentTool === 'orbit' && d < 300) { this.vx += dy * ((300 - d) / 4000); this.vy -= dx * ((300 - d) / 4000); }
+                    else if (currentTool === 'push' && d < 200) { this.vx -= (dx / d) * 0.4; this.vy -= (dy / d) * 0.4; }
+                }
+                this.x += this.vx; this.y += this.vy;
+                this.vx *= 0.99; this.vy *= 0.99;
+                if (this.x > width || this.x < 0) this.vx *= -0.8;
+                if (this.y > height || this.y < 0) this.vy *= -0.8;
+            }
+            draw() {
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color; ctx.fill();
+            }
+        }
+
+        class Seeker {
+            constructor(x, y, hOffset = Math.random() * 360) {
+                this.x = x; this.y = y;
+                this.vx = (Math.random() - 0.5) * 3; this.vy = (Math.random() - 0.5) * 3;
+                this.radius = 4;
+                this.maxSpeed = 2 + Math.random() * 2;
+                this.health = 100;
+                this.maxHealth = 100 + Math.random() * 100; 
+                this.hOffset = hOffset; 
+                this.energy = 0;
+                this.pulseSpeed = 0.03 + Math.random() * 0.04;
+                this.decayRate = 0.03 + Math.random() * 0.05;
+            }
+
+            update() {
+                this.health -= this.decayRate;
+                if (this.health <= 0) return;
+
+                let closest = null, minDist = 500;
+                particles.forEach(p => {
+                    const d = Math.hypot(p.x - this.x, p.y - this.y);
+                    if (d < minDist) { minDist = d; closest = p; }
+                });
+
+                if (closest) {
+                    const dx = closest.x - this.x, dy = closest.y - this.y;
+                    this.vx += (dx / minDist) * 0.3; this.vy += (dy / minDist) * 0.3;
+                    if (minDist < this.radius + closest.radius + 3) {
+                        closest.isDead = true;
+                        this.health = Math.min(this.maxHealth, this.health + 20);
+                        this.energy += 25;
+                        this.radius = Math.min(12, this.radius + 0.4);
+                    }
+                }
+
+                if (this.energy > 120) this.reproduce();
+
+                const speed = Math.hypot(this.vx, this.vy);
+                if (speed > this.maxSpeed) { this.vx = (this.vx / speed) * this.maxSpeed; this.vy = (this.vy / speed) * this.maxSpeed; }
+                
+                this.x += this.vx; this.y += this.vy;
+                if (this.x > width || this.x < 0) this.vx *= -0.7;
+                if (this.y > height || this.y < 0) this.vy *= -0.7;
+            }
+
+            reproduce() {
+                this.energy = 0; this.radius *= 0.6;
+                seekers.push(new Seeker(this.x + 10, this.y + 10, this.hOffset + (Math.random() - 0.5) * 30));
+            }
+
+            draw() {
+                const lifeRatio = this.health / this.maxHealth;
+                const audioPulse = isMicActive ? (volume / 100) : 0;
+                const basePulse = (Math.sin(tick * this.pulseSpeed) + 1) / 2;
+                const finalPulse = Math.max(basePulse * lifeRatio, audioPulse * 1.5);
+                
+                const hue = this.hOffset + (1 - lifeRatio) * 60; 
+                const sat = 70 + (lifeRatio * 30);
+                const light = 40 + (finalPulse * 40);
+
+                ctx.save();
+                ctx.shadowBlur = (10 + finalPulse * 20) * (theme === 'dark' ? 1 : 0.2);
+                ctx.shadowColor = `hsla(${hue}, ${sat}%, ${light}%, 0.8)`;
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius + audioPulse * 10, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${0.3 + finalPulse * 0.7})`;
+                ctx.fill();
+                
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 0.3, 0, Math.PI * 2);
+                ctx.fillStyle = theme === 'dark' ? '#fff' : '#000';
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function loop() {
+            tick++;
+            if (isMicActive && analyser) {
+                analyser.getByteFrequencyData(dataArray);
+                let sum = 0;
+                for(let i=0; i<dataArray.length; i++) sum += dataArray[i];
+                volume = sum / dataArray.length;
+            }
+
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bg-color');
+            ctx.fillRect(0, 0, width, height);
+
+            if (isDrawing) {
+                if (currentTool === 'food' && particles.length < 1500) {
+                    const pool = colors[theme];
+                    for(let i=0; i<2; i++) particles.push(new Particle(mouse.x + (Math.random()-0.5)*15, mouse.y + (Math.random()-0.5)*15, pool[Math.floor(Math.random()*pool.length)]));
+                } else if (currentTool === 'seeker' && seekers.length < 80) {
+                    seekers.push(new Seeker(mouse.x, mouse.y));
+                    isDrawing = false;
+                }
+            }
+
+            particles = particles.filter(p => !p.isDead);
+            particles.forEach(p => { p.update(); p.draw(); });
+
+            ctx.lineWidth = isMicActive ? 1 + (volume / 20) : 1;
+            for (let i = 0; i < seekers.length; i++) {
+                const s1 = seekers[i];
+                if (s1.health <= 0) continue;
+                for (let j = i + 1; j < seekers.length; j++) {
+                    const s2 = seekers[j];
+                    const d = Math.hypot(s1.x - s2.x, s1.y - s2.y);
+                    if (d < 180) {
+                        const opacity = (1 - (d / 180)) * 0.3 * ((s1.health + s2.health) / (s1.maxHealth + s2.maxHealth));
+                        const glow = isMicActive ? (volume / 100) : 0;
+                        ctx.beginPath();
+                        ctx.strokeStyle = `hsla(${s1.hOffset}, 80%, 60%, ${opacity + glow})`;
+                        ctx.moveTo(s1.x, s1.y); ctx.lineTo(s2.x, s2.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            seekers = seekers.filter(s => s.health > 0);
+            seekers.forEach(s => { s.update(); s.draw(); });
+
+            if (isDrawing) {
+                ctx.beginPath(); ctx.arc(mouse.x, mouse.y, 45, 0, Math.PI * 2);
+                ctx.strokeStyle = theme === 'dark' ? 'rgba(0, 242, 255, 0.2)' : 'rgba(0,0,0,0.1)';
+                ctx.setLineDash([5, 5]); ctx.stroke(); ctx.setLineDash([]);
+            }
+            requestAnimationFrame(loop);
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
